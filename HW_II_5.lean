@@ -1,3 +1,5 @@
+import Mathlib
+
 namespace HW_II_5
 -- 1
 
@@ -20,7 +22,6 @@ x : A, f : A → B, fx : B ⊢ fun x => fun f => f x : A → (A → B) → B
 
 
 -- 2
-import Mathlib
 
 
 inductive Vec (α : Type) : Nat → Type where
