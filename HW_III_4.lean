@@ -76,7 +76,7 @@ example : ∃ x, on_right mary x := ⟨steve, rfl⟩
 example : ∃ x, ¬on_right mary x := ⟨mary, Person.noConfusion⟩
 
 -- 5
-example : ∀ x , ∃ y, y = neg x := sorry
+example : ∀ x , ∃ y, y = neg x := fun a => Exists.intro a.neg rfl
 
 -- 6
 example : (∀ x, P x → r) ↔ (∃ x, P x) → r := ⟨fun a b => Exists.elim b a, fun a b c => a (Exists.intro b c)⟩
