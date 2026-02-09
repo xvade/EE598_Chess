@@ -29,9 +29,9 @@ inductive Nor (p q : Prop) : Prop where
   | intro : ¬p → ¬q → Nor p q
 
 def Nor.elim_left {p q : Prop} (hnpq : Nor p q) : ¬p := match hnpq with
-| Nor.intro a b => a
+| Nor.intro a _ => a
 def Nor.elim_right {p q : Prop} (hnpq : Nor p q) : ¬q := match hnpq with
-| Nor.intro a b => b
+| Nor.intro _ b => b
 
 -- 6
 example : ¬p → (Nor p p) := fun a => Nor.intro a a
