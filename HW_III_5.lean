@@ -151,12 +151,35 @@ def no_negs (x : PreDyadic) : Prop := match x with
 | neg _ => False
 
 -- 3b
-example (x : PreDyadic) : no_negs x → no_negs (Double x) := by
+lemma double_not_introduces_neg (x : PreDyadic) : no_negs x → no_negs (Double x) := by
   intro h1
-  cases x
-
+  induction x with
+  | zero => exact h1
+  | add_one a ih => exact ih h1
+  | half a _ => exact h1
+  | neg a _ => exact h1
 
 -- 3c
+example (x y : PreDyadic) : no_negs x → no_negs y → no_negs (mul x y) := by
+  have hadd (a b : PreDyadic) : no_negs a → no_negs b → no_negs (add a b) := by
+    intro h1 h2
+    induction a with
+    | zero => exact h2
+    | add_one c ih => exact ih h1
+    | half c ih =>
+      unfold add
+      unfold no_negs
+      sorry
+    | neg c => exact h1
+
+  intro h1 h2
+  induction x with
+  | zero => exact h1
+  | add_one a ih =>
+    unfold mul
+    sorry
+  | half a ih => exact ih h1
+  | neg a _ => exact h1
 
 
 
