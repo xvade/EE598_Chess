@@ -1,3 +1,4 @@
+namespace HW_III_1
 -- 1
 
 --  Cannot prove (p∨q) ∧ (p∨r) → p ∨ (q∧r) without law of the excluded middle.
@@ -153,3 +154,4 @@ State: ¬¬p, p ∨ ¬p, ¬p ⊢ ¬p
 Axiom
 State: Goals accomplished!
 -/
+end HW_III_1

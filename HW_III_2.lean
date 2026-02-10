@@ -1,3 +1,4 @@
+namespace HW_III_2
 -- 1
 variable (P Q : Prop)
 
@@ -15,3 +16,4 @@ example : ¬P → (P → Q) :=
 
 example : (∀ x, x > 0) → (∀ y, y > 0) :=
   fun a => a
+end HW_III_2
