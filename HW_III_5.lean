@@ -161,23 +161,22 @@ lemma double_not_introduces_neg (x : PreDyadic) : no_negs x → no_negs (Double 
 
 -- 3c
 example (x y : PreDyadic) : no_negs x → no_negs y → no_negs (mul x y) := by
-  have hadd (a b : PreDyadic) : no_negs a → no_negs b → no_negs (add a b) := by
-    intro h1 h2
+  have hadd (a : PreDyadic) : no_negs a → (∀ (b : PreDyadic), no_negs b → no_negs (add a b)) := by
+    intro h1
     induction a with
-    | zero => exact h2
+    | zero => intro b h2; exact h2
     | add_one c ih => exact ih h1
     | half c ih =>
-      unfold add
-      unfold no_negs
-      sorry
-    | neg c => exact h1
-
+      intro b h2
+      apply ih at h1
+      exact h1 (Double b) (double_not_introduces_neg b h2)
+    | neg c ih => intro b h2; exact h1
   intro h1 h2
   induction x with
   | zero => exact h1
   | add_one a ih =>
     unfold mul
-    sorry
+    exact hadd y h2 (mul a y) (ih h1)
   | half a ih => exact ih h1
   | neg a _ => exact h1
 
