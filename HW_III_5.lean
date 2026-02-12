@@ -1,4 +1,5 @@
 import Mathlib
+set_option linter.style.longLine false
 
 inductive Person where | mary | steve | ed | jolin
 
@@ -60,7 +61,7 @@ open PreDyadic
 
 namespace HW_III_5
 
--- 1
+
 variable (P Q : Type → Prop)
 
 
@@ -74,6 +75,7 @@ example : (¬ ∃ x, P x) ↔ (∀ x, ¬ P x) := by
     exact (h x) hpa
 
 
+-- 1
 example : (∃ x, P x ∧ Q x) →  ∃ x, Q x ∧ P x := by
   intro h
   apply Exists.elim h
@@ -180,6 +182,23 @@ example (x y : PreDyadic) : no_negs x → no_negs y → no_negs (mul x y) := by
   | half a ih => exact ih h1
   | neg a _ => exact h1
 
+-- 4
+#help tactic
+
+theorem demorgan (a b : Prop) : ¬(a ∧ b) ↔ (¬ a ∨ ¬b) := by
+  tauto
+
+theorem another (a b : Prop) : ¬a → ((b → a) → ¬b) := by
+  tauto
+
+#print demorgan
+#print another
+/-
+Tauto seems to run some straightforward matching (much the same that I do), that
+does stuff like create a fun new_var => ... whenever it sees a goal of the form
+_ → _. Once it runs out of that, it seems to go for Or.casesOn or And.casesOn
+followed by applying some sort of Decidable theorem.
+-/
 
 
 end HW_III_5
