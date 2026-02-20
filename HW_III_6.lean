@@ -109,8 +109,10 @@ theorem MyEq.to_iff (a b : Prop) : a ~ b → (a ↔ b) := by
 -- 2
 example (P : Type → Prop) : ∀ x y, x = y → P x → ∃ z, P z := by
   intro α₁ α₂ h₃ h₄
-  use α₁
-  <;> sorry
+  use α₂
+  exact h₃ ▸ h₄
+
+
 
 
 inductive Spin where | up | dn
@@ -149,6 +151,9 @@ theorem com {x y} : x o y = y o x := by cases x <;> simp
 
 theorem toggle_op_right {x y} : (x o y)⁻¹ = y o x⁻¹ := by cases x <;> simp
 
+
+
+
 @[simp]
 theorem inv_cancel_right {x} : x o x⁻¹ = dn := by cases x <;> simp
 
@@ -169,7 +174,9 @@ example (n : Nat) : 6 * (T n) = n * (n+1) * (2*n+1) := by
     rfl
   | succ k ih =>
     unfold T  -- interesting that this is required
-    nlinarith
+    linarith
+
+
 
 
 -- 5
@@ -178,11 +185,450 @@ example (x : PreDyadic) : zero ≠ add_one x := PreDyadic.noConfusion
 example : ¬zero.add_one = zero.add_one.add_one.half := PreDyadic.noConfusion
 
 -- 6
-example (x y : PreDyadic) : add_one x = add_one y ↔ x = y := ⟨sorry, sorry⟩
+example (x y : PreDyadic) : add_one x = add_one y ↔ x = y := ⟨
+  by
+    intro h
+    exact congrArg
+      (fun a => match a with
+        | zero => zero
+        | add_one b => b
+        | half b => b
+        | neg b => b) h,
+  congrArg add_one
+⟩
 
 
 
+structure Point (α : Type u) where
+  x : α
+  y : α
+
+theorem Point.ext {α : Type} (p q : Point α) (hx : p.x = q.x) (hy : p.y = q.y)
+  : p = q := by
+  cases p with | mk a b =>
+  cases q with | mk c d =>
+  simp_all
+
+example (x y : Nat) : Point.mk (x+y) (x+y) = Point.mk (y+x) (y+x) := by
+  apply Point.ext
+  · exact add_comm x y
+  · exact add_comm x y
+
+@[ext]
+structure Komplex where
+  re : ℝ
+  im : ℝ
+
+example (x y : ℝ) : Komplex.mk (x+y) (x+y) = Komplex.mk (y+x) (y+x) := by
+  ext
+  · exact add_comm x y
+  · exact add_comm x y
 
 
--- 7
+def shift (k x : ℤ) : ℤ := x+k
+
+@[simp]
+theorem shift_inv_right {k} : shift k ∘ shift (-k) = id := by
+  funext x              -- x : ℤ ⊢ (shift k ∘ shift (-k)) x = id x
+  simp[shift]
+
+@[simp]
+theorem shift_inv_left {k} : shift (-k) ∘ shift k = id := by
+  funext x
+  simp[shift]
+
+open Function
+
+example {k} : Bijective (shift k) := by
+  rw[bijective_iff_has_inverse]
+  use shift (-k)
+  constructor
+  · simp[leftInverse_iff_comp]     -- uses shift_inv_left
+  · simp[rightInverse_iff_comp]    -- uses shift_inv_right
+
+-- 7 ------------------
+@[simp] theorem shift_zero : shift 0 = id := by
+  funext x
+  unfold shift
+  simp
+
+@[simp] theorem shift_add {j k} : shift k ∘ shift j = shift (j+k) := by
+  unfold shift
+  simp
+
+
+
+-- 8 -----------------
+example : Double ∘ half = id := by
+  funext x
+  simp
+  rfl
+
+-- 9  -------------------
+def spin_bool_equiv : Spin ≃ Bool := {
+  toFun := fun a => match a with | up => true | dn => false,
+  invFun := fun a => match a with | true => up | false => dn,
+  left_inv := by
+    intro x
+    cases x with
+    | up => rfl
+    | dn => rfl
+  right_inv := by
+    intro x
+    cases x with
+    | true => rfl
+    | false => rfl
+}
+
+-- 10 This took me 9 hours (I counted) (and that's a good thing—I know more Lean now)
+@[ext]
+structure K1 where
+  re : ℝ
+  im : ℝ
+
+@[ext]
+structure K2 where
+  a : ℝ
+  θ : ℝ
+  pa : 0 ≤ a
+  pθ : -Real.pi ≤ θ ∧ θ < Real.pi
+  h : a = 0 → θ = 0
+
+noncomputable def make_K2_from_K1 (k1 : K1) : K2 :=
+  let a := (√(k1.re ^ 2 + k1.im ^ 2))
+  let θ := (
+    if k1.re = 0 then (
+      if k1.im = 0 then 0 else
+        if k1.im > 0 then Real.pi/2 else -(Real.pi/2)
+    ) else (
+      if k1.re > 0 then Real.arctan (k1.im / k1.re) else (
+        if Real.arctan (k1.im / k1.re) < 0 then Real.pi + Real.arctan (k1.im / k1.re) else -Real.pi + Real.arctan (k1.im / k1.re)
+        )
+      )
+  )
+  have pa : 0 ≤ a := by positivity
+  have pθ : -Real.pi ≤ θ ∧ θ < Real.pi := ⟨
+    (by
+      unfold θ
+      split_ifs with h1 h2 h3 h4 h5
+      · simp only [Left.neg_nonpos_iff]
+        exact Real.pi_nonneg
+      · have h : Real.pi / 2 > 0 := by
+          exact Real.pi_div_two_pos
+        have h' : -Real.pi < 0 := neg_neg_iff_pos.mpr Real.pi_pos
+        have h'' : -Real.pi < Real.pi / 2 := by exact Std.lt_trans h' h
+        exact Std.le_of_lt h''
+      · have h (a : Real) (h : a > 0): a / 2 < a := by aesop
+        have h' := h Real.pi Real.pi_pos
+        have h'': -(Real.pi / 2) > -Real.pi := by aesop
+        exact Std.le_of_lt h''
+      · have h (a : ℝ) : -(Real.pi / 2) < Real.arctan a := by
+          exact Real.neg_pi_div_two_lt_arctan a
+        have h' (a : Real) (h : a > 0): a / 2 < a := by aesop
+        have h'' := h' Real.pi Real.pi_pos
+        have h''': -(Real.pi / 2) > -Real.pi := by aesop
+        grind
+      · have h : -Real.pi ≤ Real.arctan (k1.im / k1.re) := by
+          have h (a : ℝ) : -(Real.pi / 2) < Real.arctan a := by
+            exact Real.neg_pi_div_two_lt_arctan a
+          have h' (a : Real) (h : a > 0): a / 2 < a := by aesop
+          have h'' := h' Real.pi Real.pi_pos
+          have h''': -(Real.pi / 2) > -Real.pi := by aesop
+          grind
+        grind
+      · suffices 0 ≤ Real.arctan (k1.im / k1.re) by
+          exact (le_add_iff_nonneg_right (-Real.pi)).mpr this
+        grind
+    ),
+    (by
+      unfold θ
+      split_ifs with h1 h2 h3 h4 h5
+      · exact Real.pi_pos
+      · have h' (a : Real) (h : a > 0): a / 2 < a := by aesop
+        exact h' Real.pi Real.pi_pos
+      · have h : Real.pi > 0 := by
+          exact Real.pi_pos
+        have h' : -(Real.pi / 2) < 0 := neg_neg_iff_pos.mpr Real.pi_div_two_pos
+        have h'' : -(Real.pi / 2) < Real.pi := by exact Std.lt_trans h' h
+        exact Std.lt_trans h' h
+      · have h : Real.arctan (k1.im / k1.re) < Real.pi := by
+          have h (a : ℝ) : Real.arctan a < Real.pi / 2 := by
+            exact Real.arctan_lt_pi_div_two a
+          have h' (a : Real) (h : a > 0): a / 2 < a := by aesop
+          have h'' := h' Real.pi Real.pi_pos
+          have h''': -(Real.pi / 2) > -Real.pi := by aesop
+          grind
+        grind
+      · suffices Real.arctan (k1.im / k1.re) < 0 by
+          exact add_lt_iff_neg_left.mpr h5
+        grind
+      · suffices Real.arctan (k1.im / k1.re) < Real.pi by
+          exact add_lt_of_neg_of_lt (neg_neg_iff_pos.mpr Real.pi_pos) this
+        have h := Real.pi_pos
+        have h' := Real.arctan_lt_pi_div_two (k1.im / k1.re)
+        have h'' : Real.pi / 2 < Real.pi := by exact div_two_lt_of_pos h
+        exact Std.lt_trans h' h''
+    )
+  ⟩
+  K2.mk
+    a
+    θ
+    pa
+    pθ
+    (by
+      unfold a θ
+      by_cases (k1.re = 0)
+      · expose_names
+        intro h1
+        simp [h]
+        intro h2
+        absurd h1
+        simp[*]
+        positivity
+      · expose_names
+        intro h1
+        simp only [gt_iff_lt]
+        absurd h1
+        positivity
+    )
+
+noncomputable def K_equiv : K1 ≃ K2 := {
+  toFun := make_K2_from_K1,
+  invFun := fun k2 => K1.mk
+    (k2.a * Real.cos k2.θ)
+    (k2.a * Real.sin k2.θ),
+  left_inv := (
+    by
+      intro x
+      simp
+      by_cases (x.re = 0)
+      · expose_names
+        unfold make_K2_from_K1
+        simp_all
+        by_cases (x.im = 0)
+        · simp_all
+          expose_names
+          exact K1.ext (Eq.symm h) (Eq.symm h_1)
+        · expose_names
+          simp_all
+          by_cases (0 < x.im)
+          · expose_names
+            simp_all
+            have h2 : x.im = √(x.im ^ 2) := by
+              rw [Real.sqrt_sq_eq_abs]
+              exact Eq.symm (abs_of_pos h_2)
+            rw[← h, ← h2]
+          · expose_names
+            simp_all
+            by_cases (0 < x.im)
+            · expose_names
+              simp_all
+              absurd h_2
+              exact not_le_of_gt h_3
+            · expose_names
+              simp_all
+              have h_3 : x.im < 0 := Std.lt_of_le_of_ne h_2 h_1
+              have h' : ¬ (0 < x.im) := not_lt_of_ge h_2
+              simp[h']
+              have h_4 : x.im = -√(x.im ^ 2) := by
+                rw [Real.sqrt_sq_eq_abs, abs_of_neg]
+                simp
+                exact h_3
+              rw[← h_4, ← h]
+      · expose_names
+        unfold make_K2_from_K1
+        simp_all
+        by_cases (x.re > 0)
+        ·
+          simp_all
+          rw[Real.cos_arctan]
+          have h1 : ((1 : ℝ) / √(1 + (x.im / x.re) ^ 2) = x.re / √(x.im^2 + x.re^2)) := by
+            rw[div_pow x.im x.re 2]
+            have h1 : 1 = (x.re ^ 2) / (x.re ^ 2) := by
+              aesop
+            rw[h1, (add_div (x.re ^ 2) (x.im ^ 2) (x.re ^ 2)).symm, ← h1, Real.sqrt_div, Real.sqrt_sq]
+            simp
+            rw[add_comm]
+            positivity
+            positivity
+          rw[h1, add_comm]
+          have h2 : √(x.im ^ 2 + x.re ^ 2) ≠ 0 := by positivity
+          have h3 : √(x.im ^ 2 + x.re ^ 2) * (x.re / √(x.im ^ 2 + x.re ^ 2)) = x.re := by
+            exact mul_div_cancel₀ x.re h2
+          rw[h3, Real.sin_arctan]
+          -- clear * - h
+          rw [div_eq_mul_one_div (x.im / x.re) √(1 + (x.im / x.re) ^ 2), h1]
+          have h4 : √(x.im ^ 2 + x.re ^ 2) * (x.im / x.re * (x.re / √(x.im ^ 2 + x.re ^ 2))) = x.im := by
+            grind
+          rw[h4]
+        ·
+          by_cases (Real.arctan (x.im / x.re) < 0)
+          ·
+            simp[*]
+            have h''' (a : Real) : Real.cos (Real.pi + a) = -Real.cos a := by
+              rw[add_comm]
+              simp
+            split_ifs with h1
+            ·
+              rw[h''', Real.cos_arctan]
+              have h1 : ((1 : ℝ) / √(1 + (x.im / x.re) ^ 2) = -x.re / √(x.im^2 + x.re^2)) := by
+                rw[div_pow x.im x.re 2]
+                have h1 : 1 = (x.re ^ 2) / (x.re ^ 2) := by
+                  aesop
+                rw[h1, (add_div (x.re ^ 2) (x.im ^ 2) (x.re ^ 2)).symm, ← h1, Real.sqrt_div, Real.sqrt_sq_eq_abs, abs_of_neg]
+                simp
+                rw[add_comm]
+                grind
+                positivity
+              rw[h1, add_comm]
+              have h2 : √(x.im ^ 2 + x.re ^ 2) ≠ 0 := by positivity
+              have h3 : √(x.im ^ 2 + x.re ^ 2) * (x.re / √(x.im ^ 2 + x.re ^ 2)) = x.re := by
+                exact mul_div_cancel₀ x.re h2
+              have h4 (a b : Real) : -(-a/b) = a/b := by
+                grind
+              rw[h4, h3, add_comm Real.pi]
+              simp
+              rw[Real.sin_arctan]
+              -- clear * - h
+              rw [div_eq_mul_one_div (x.im / x.re) √(1 + (x.im / x.re) ^ 2), h1]
+              have h4 : √(x.im ^ 2 + x.re ^ 2) * (x.im / x.re * (x.re / √(x.im ^ 2 + x.re ^ 2))) = x.im := by
+                grind
+              have h5 : -(√(x.im ^ 2 + x.re ^ 2) * (x.im / x.re * (-x.re / √(x.im ^ 2 + x.re ^ 2)))) = (√(x.im ^ 2 + x.re ^ 2) * (x.im / x.re * (x.re / √(x.im ^ 2 + x.re ^ 2)))) := by
+                grind
+              rw[h5, h4]
+            ·
+              have h''' (a : Real) : Real.cos (-Real.pi + a) = -Real.cos a := by
+               aesop
+              rw[h''', Real.cos_arctan]
+              have h1 : ((1 : ℝ) / √(1 + (x.im / x.re) ^ 2) = -x.re / √(x.im^2 + x.re^2)) := by
+                rw[div_pow x.im x.re 2]
+                have h1 : 1 = (x.re ^ 2) / (x.re ^ 2) := by
+                  aesop
+                rw[h1, (add_div (x.re ^ 2) (x.im ^ 2) (x.re ^ 2)).symm, ← h1, Real.sqrt_div, Real.sqrt_sq_eq_abs, abs_of_neg]
+                simp
+                rw[add_comm]
+                grind
+                positivity
+              rw[h1, add_comm]
+              have h2 : √(x.im ^ 2 + x.re ^ 2) ≠ 0 := by positivity
+              have h3 : √(x.im ^ 2 + x.re ^ 2) * (x.re / √(x.im ^ 2 + x.re ^ 2)) = x.re := by
+                exact mul_div_cancel₀ x.re h2
+              have h4 (a b : Real) : -(-a/b) = a/b := by
+                grind
+              rw[h4, h3]
+              have h5 (a : ℝ) : -Real.sin a = Real.sin (-Real.pi + a) := by aesop
+              rw[← h5]
+              rw[Real.sin_arctan]
+              -- clear * - h
+              rw [div_eq_mul_one_div (x.im / x.re) √(1 + (x.im / x.re) ^ 2), h1]
+              have h4 : √(x.im ^ 2 + x.re ^ 2) * -(x.im / x.re * (-x.re / √(x.im ^ 2 + x.re ^ 2))) = x.im := by
+                grind
+              rw[h4]
+          ·
+            split_ifs with h1 h2
+            ·
+              have him : √(x.re ^ 2 + x.im ^ 2) * (x.im / x.re / √(1 + (x.im / x.re) ^ 2)) = x.im := by grind
+              have hre : √(x.re ^ 2 + x.im ^ 2) * (1 / √(1 + (x.im / x.re) ^ 2)) = x.re := by grind
+              rw[Real.sin_arctan, Real.cos_arctan, hre, him]
+            · aesop
+            ·
+              have h3 :  Real.cos (-Real.pi + Real.arctan (x.im / x.re)) =  -Real.cos (Real.arctan (x.im / x.re)) := by
+                rw[add_comm, ←sub_eq_add_neg]
+                exact Real.cos_sub_pi (Real.arctan (x.im / x.re))
+              rw[h3]
+              have h3' :  Real.sin (-Real.pi + Real.arctan (x.im / x.re)) =  -Real.sin (Real.arctan (x.im / x.re)) := by
+                rw[add_comm, ←sub_eq_add_neg]
+                exact Real.sin_sub_pi (Real.arctan (x.im / x.re))
+              rw[h3']
+              rw[Real.cos_arctan, Real.sin_arctan]
+              have h4 : ((1 : ℝ) / √(1 + (x.im / x.re) ^ 2) = -x.re / √(x.im^2 + x.re^2)) := by
+                  rw[div_pow x.im x.re 2]
+                  have h1 : 1 = (x.re ^ 2) / (x.re ^ 2) := by
+                    aesop
+                  rw[h1, (add_div (x.re ^ 2) (x.im ^ 2) (x.re ^ 2)).symm, ← h1, Real.sqrt_div, Real.sqrt_sq_eq_abs]
+                  grind
+                  positivity
+              have h'' : √(x.im ^ 2 + x.re ^ 2) ≠ 0 := by positivity
+              have hre : √(x.re ^ 2 + x.im ^ 2) * -(1 / √(1 + (x.im / x.re) ^ 2)) = x.re := by
+                rw[h4]
+                simp
+                have h' (a b: ℝ) : -a / b = -(a / b) := by exact neg_div b a
+                rw[h']
+                simp
+                rw[add_comm]
+                grind
+              rw[hre]
+              have him : √(x.re ^ 2 + x.im ^ 2) * -(x.im / x.re / √(1 + (x.im / x.re) ^ 2)) = x.im := by
+                have h''' : (x.im / x.re / √(1 + (x.im / x.re) ^ 2)) = (x.im / x.re) * (1 / √(1 + (x.im / x.re) ^ 2)) := by grind
+                rw[h''']
+                rw[h4, add_comm]
+                grind
+              rw[him]
+  ),
+  right_inv := (
+    by
+      intro x
+      unfold make_K2_from_K1
+      simp
+      have ha : √((x.a * Real.cos x.θ) ^ 2 + (x.a * Real.sin x.θ) ^ 2) = x.a := by
+        rw[mul_pow, mul_pow, add_comm, ← mul_add, Real.sin_sq_add_cos_sq]
+        simp
+        rw[Real.sqrt_sq_eq_abs]
+        exact abs_of_nonneg x.pa
+      split_ifs with h1 h2 h3 h4 h5
+      ·
+        ext
+        · exact ha
+        · cases h1
+          expose_names
+          simp_all
+          exact (x.h h).symm
+          expose_names
+          cases h2
+          simp_all
+          expose_names
+          exact (x.h h_1).symm
+          simp_all
+          expose_names
+          absurd h_1
+          apply Real.cos_eq_zero_iff_sin_eq.mp at h
+          cases h
+          positivity
+          positivity
+      ·
+        simp_all
+        cases h1
+        expose_names
+        absurd h3
+        rw[h]
+        simp
+        expose_names
+        ext
+        ·
+          rfl
+        · apply Real.cos_eq_zero_iff.mp at h
+          cases h
+          · expose_names
+            cases w
+            expose_names
+            cases a
+            · simp_all
+            · expose_names
+              simp_all
+              exfalso
+              have pθ := x.pθ
+              have h' : ↑n + 1 ≥ 1 := by grind
+              have h'' : (2 * (↑n + 1) + 1) * Real.pi / 2 ≥ (3 : ℕ) * (Real.pi / 2) := by
+                have h'' : ((2 : ℝ) * (n + (1 : ℝ)) + (1 : ℝ)) ≥ (3 : ℝ) := by sorry
+                apply?
+
+      · sorry
+      · sorry
+      · sorry
+      · sorry
+
+  )
+
+}
+
 end HW_III_6
