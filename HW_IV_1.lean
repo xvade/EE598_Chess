@@ -148,7 +148,7 @@ class Ring (R : Type u)
 
 class CommRing (R : Type u)
    extends Ring R where
-   mulcomm {x y : R} : mul x y = mul y x
+   mul_comm {x y : R} : mul x y = mul y x
 
 variable {R : Type u} [CommRing R]
 
@@ -178,7 +178,7 @@ theorem mul_zero {R : Type u} [CommRing R] (x : R) : x * e = e := by
 @[simp]
 theorem neg_one {R : Type u} [CommRing R] (x : R) : (-one:R)*x = -x := by
   have h0 : (one:R) + -(one:R) = (e:R) := by rw[inv_right]
-  have h1 : e = (e:R) * x := by rw[mulcomm,mul_zero]
+  have h1 : e = (e:R) * x := by rw[CommRing.mul_comm,mul_zero]
   nth_rewrite 2 [←h0] at h1
   rw[r_distrib,mul_id_left] at h1
   have h2 := add_left h1 (-x)
@@ -188,10 +188,10 @@ theorem neg_one {R : Type u} [CommRing R] (x : R) : (-one:R)*x = -x := by
 
 -- 5 ------------------------
 theorem factor_mul_inv_right (x y : R) : x * (-y) = -(x*y) := by
-    sorry
-
-
-
+    rw[← neg_one, ←Monoid.mul_assoc]
+    nth_rewrite 2 [CommRing.mul_comm]
+    rw[Monoid.mul_assoc]
+    simp
 
 
 def Spin.mul (a b : Spin) : Spin :=
