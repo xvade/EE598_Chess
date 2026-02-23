@@ -120,13 +120,19 @@ infix:50 " × " => Group.prod
 
 
 -- 4 ------------------------
-example : e = (up,up) := sorry
-example : -(up,up) = (up,up):= sorry
-example (x : Spin × Spin) : - x + x = (up,up) := sorry
+example : e = (up,up) := by
+    unfold e
+    unfold prod
+    simp
+    rfl
 
+example : -(up,up) = (up,up) := by
+    rw[inv]
+    rw[prod]
+    simp
+    rfl
 
-
-
+lemma cross_spin (x : Spin × Spin) : - x + x = (up,up) := by aesop
 
 class Monoid (M : Type u) where
   mul : M → M → M
@@ -169,6 +175,7 @@ theorem mul_zero {R : Type u} [CommRing R] (x : R) : x * e = e := by
   rw[id_left]  at h
   exact h.symm
 
+@[simp]
 theorem neg_one {R : Type u} [CommRing R] (x : R) : (-one:R)*x = -x := by
   have h0 : (one:R) + -(one:R) = (e:R) := by rw[inv_right]
   have h1 : e = (e:R) * x := by rw[mulcomm,mul_zero]
@@ -179,8 +186,9 @@ theorem neg_one {R : Type u} [CommRing R] (x : R) : (-one:R)*x = -x := by
   exact h2.symm
 
 
--- 4 ------------------------
-theorem factor_mul_inv_right : x*(-y) = -(x*y) := sorry
+-- 5 ------------------------
+theorem factor_mul_inv_right (x y : R) : x * (-y) = -(x*y) := by
+    sorry
 
 
 
