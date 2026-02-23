@@ -141,6 +141,9 @@ class Monoid (M : Type u) where
   mul_id_left {a : M}   : mul one a = a
   mul_id_right {a : M}  : mul a one = a
 
+@[simp] theorem mul_id_left_for_simp {a : M} [Monoid M] : Monoid.mul Monoid.one a = a :=
+    Monoid.mul_id_left
+
 class Ring (R : Type u)
   extends CommGroup R, Monoid R where
   l_distrib {x y z : R} : mul x (op y z) = op (mul x y) (mul x z)
@@ -174,6 +177,11 @@ theorem mul_zero {R : Type u} [CommRing R] (x : R) : x * e = e := by
   rw[inv_left] at h
   rw[id_left]  at h
   exact h.symm
+
+@[simp]
+theorem zero_mul {R : Type u} [CommRing R] (x : R) : e * x = e := by
+    rw[CommRing.mul_comm]
+    exact mul_zero x
 
 @[simp]
 theorem neg_one {R : Type u} [CommRing R] (x : R) : (-one:R)*x = -x := by
@@ -251,10 +259,58 @@ instance Seq.inst_ring {R : Type u} [Ring R] : Ring (ℕ → R) := {
 
 -- 8 ------------------------
 example : CommRing R → CommRing (ℕ → R) := fun h => {
-    mulcomm := by
+    mul_comm := by
         intro x y
         funext n
-        exact mulcomm
+        exact mul_comm
+}
+
+
+
+
+structure Ideal (R : Type u) [CommRing R] where
+  I : R → Prop
+  has_zero : I e
+  closed {x y : R} : I x → I y → I (-x + y)
+  absorb {r x : R} : I x → I (r * x) ∧ I (x * r)
+
+
+-- 9 ------------------------
+def PrincipalIdeal {R : Type u} [CommRing R] (a : R) : Ideal R := {
+  I b := ∃ r : R, b = a * r,
+  has_zero := by {
+    use ((e:R) + ((Group.inv one) * (e:R)))
+    simp
+  }
+  closed := by {
+    intro x y h1 h2
+    cases h1 with
+    | intro c hc =>
+        cases h2 with
+        | intro d hd =>
+            use (d - c)
+            rw[hc, hd]
+            rw[Group.sub, l_distrib, CommGroup.comm]
+            nth_rewrite 2 [←neg_one]
+            rw[←Monoid.mul_assoc]
+            nth_rewrite 5 [CommRing.mul_comm]
+            rw[Monoid.mul_assoc]
+            simp
+  },
+  absorb := by {
+    intro r x h1
+    cases h1 with
+    | intro r0 h1
+    constructor
+    ·   use (r * r0)
+        rw[h1]
+        rw[←Monoid.mul_assoc]
+        nth_rewrite 2 [CommRing.mul_comm]
+        rw[Monoid.mul_assoc]
+    ·   rw[h1]
+        use (r0 * r)
+        rw[Monoid.mul_assoc]
+  }
 }
 
 
@@ -277,8 +333,9 @@ variable (x y : F)
 #check one * (x - x⁻¹) + e * y
 end
 
+@[simp]
 theorem mul_id_right : x * one = x := by
-  rw[mulcomm]
+  rw[CommRing.mul_comm]
   rw[mul_id_left]
 
 theorem one_ne_e : (one:F) ≠ e := by
@@ -304,7 +361,7 @@ instance Spin.inst_nt : Nontrivial Spin := {
 }
 
 instance Spin.inst_comm_ring : CommRing Spin := {
-  mulcomm {x y} := by cases x <;> cases y <;> aesop
+  mul_comm {x y} := by cases x <;> cases y <;> aesop
 }
 
 instance Spin.inst_field : Field Spin := {
@@ -314,10 +371,112 @@ instance Spin.inst_field : Field Spin := {
 }
 
 -- 10 -----------------
-theorem one_inv : (one:F)⁻¹ = one := sorry
+theorem one_inv : (one:F)⁻¹ = one := by
+    nth_rewrite 2 [←(Field.mul_inv_prop one_ne_e)]
+    simp
+
+-- 11 -----------------
+instance int_commring : CommRing ℤ := {
+    op := Int.add
+    e := 0
+    assoc {a b c} := Int.add_assoc a b c
+    id_left {a} := Int.zero_add a
+    inv {a} := -a
+    inv_left {a} := Int.add_left_neg a
+    comm {a b} := Int.add_comm a b
+    mul := Int.mul
+    one := 1
+    mul_assoc {a b c} := Int.mul_assoc a b c
+    mul_id_left {a} := Int.one_mul a
+    mul_id_right {a} := Int.mul_one a
+    l_distrib {a b c} := Int.mul_add a b c
+    r_distrib {a b c} := Int.add_mul b c a
+    mul_comm {a b} := Int.mul_comm a b
+}
 
 
 
+@[simp]
+theorem minv_zero_for_simp : (e : F)⁻¹ = e := minv_zero
+
+@[simp]
+theorem minv_minv (x : F) : x⁻¹⁻¹ = x := by
+    by_cases h : x = e
+    ·   rw[h]
+        simp
+    ·   have h1 : x * x⁻¹ = one := mul_inv_prop h
+        have h3 : x⁻¹ ≠ e := by
+            intro h0
+            have h2 := congrArg (fun a => x * a) h0
+            simp only [mul_zero] at h2
+            rw[mul_inv_prop h] at h2
+            exact one_ne_e h2
+        have h2 := Field.mul_inv_prop h3
+        rw[←h1, CommRing.mul_comm] at h2
+        have h4 := congrArg (fun (a : F) => x * a) h2
+        simp only at h4
+        nth_rewrite 2 [CommRing.mul_comm] at h4
+        nth_rewrite 4 [CommRing.mul_comm] at h4
+        rw[←Monoid.mul_assoc, ←Monoid.mul_assoc] at h4
+        simp_all
+
+
+-- 12 ----------------
+theorem inverse_mul (a b : F) : (a * b)⁻¹ = a⁻¹ * b⁻¹ := by
+    by_cases h : (a * b)⁻¹ = e
+    ·   have h1 : (a * b)⁻¹ = (a * b) := by
+            have h1 := congrArg (fun x => (a * b) * x) h
+            simp only [mul_zero] at h1
+            by_cases h2 : (a * b) = e
+            ·   rw[h, h2]
+            ·   have h3 := Field.mul_inv_prop h2
+                rw[h3] at h1
+                exfalso
+                exact one_ne_e h1
+        rw[h]
+        by_cases h2 : a = e
+        ·   rw[h2, minv_zero]
+            simp
+        ·   rw[h] at h1
+            have h3 := congrArg (fun x => a⁻¹ * x) h1
+            simp only [mul_zero] at h3
+            rw[←Monoid.mul_assoc] at h3
+            nth_rewrite 2 [CommRing.mul_comm] at h3
+            rw[mul_inv_prop h2] at h3
+            simp only [mul_id_left_for_simp] at h3
+            rw[←h3]
+            rw[minv_zero]
+            simp
+    ·   have h1 := Field.mul_inv_prop h
+        rw[minv_minv] at h1
+        have ha : a ≠ e := by
+            intro h2
+            rw[h2] at h
+            simp at h
+        have hb : b ≠ e := by
+            intro h2
+            rw[h2] at h
+            simp at h
+        have h2 : (a⁻¹ * b⁻¹) * (a * b) = one := by
+            rw[Monoid.mul_assoc]
+            nth_rewrite 3 [CommRing.mul_comm]
+            nth_rewrite 2 [←Monoid.mul_assoc]
+            nth_rewrite 3 [CommRing.mul_comm]
+            rw[Field.mul_inv_prop hb]
+            simp only [mul_id_left_for_simp]
+            rw[CommRing.mul_comm]
+            rw[Field.mul_inv_prop ha]
+        rw[←h2] at h1
+        have h3 := congrArg (fun x => x * (a * b)⁻¹) h1
+        simp only at h3
+        have h4 : a * b ≠ e := by
+            intro h4
+            have h5 := congrArg minv h4
+            rw[←minv_zero, minv_minv] at h5
+            exact h h5
+        rw[Monoid.mul_assoc, Field.mul_inv_prop h4, Monoid.mul_assoc, Field.mul_inv_prop h4] at h3
+        simp only [mul_id_right] at h3
+        exact h3
 
 
 
