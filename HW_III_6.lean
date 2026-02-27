@@ -609,23 +609,97 @@ noncomputable def K_equiv : K1 ≃ K2 := {
         · apply Real.cos_eq_zero_iff.mp at h
           cases h
           · expose_names
-            cases w
-            expose_names
-            cases a
-            · simp_all
-            · expose_names
-              simp_all
+            cases w with
+            | ofNat n =>
+              cases n with
+              | zero =>
+                simp_all
+              | succ n =>
+                exfalso
+                have pθ := x.pθ
+                have h' : ↑n + 1 ≥ 1 := by grind
+                have h'' : (2 * (↑n + 1) + 1) * Real.pi / 2 ≥ (3 : ℕ) * (Real.pi / 2) := by
+                  have h'' : ((2 : ℝ) * (n + (1 : ℝ)) + (1 : ℝ)) ≥ (3 : ℝ) := by
+                    nlinarith
+                  have hpi : 0 ≤ Real.pi / 2 := by
+                    positivity
+                  nlinarith
+                have hpi' : (3 : ℝ) * (Real.pi / 2) > Real.pi := by
+                  have hpi2 : 0 < Real.pi / 2 := by positivity
+                  nlinarith [Real.pi_pos]
+                rw [h_1] at pθ
+                norm_num at pθ
+                have : ¬ ((2 * (↑n + 1) + 1) * Real.pi / 2 < Real.pi) := by
+                  nlinarith
+                exact this pθ.2
+            | negSucc n =>
               exfalso
-              have pθ := x.pθ
-              have h' : ↑n + 1 ≥ 1 := by grind
-              have h'' : (2 * (↑n + 1) + 1) * Real.pi / 2 ≥ (3 : ℕ) * (Real.pi / 2) := by
-                have h'' : ((2 : ℝ) * (n + (1 : ℝ)) + (1 : ℝ)) ≥ (3 : ℝ) := by sorry
-                apply?
+              cases n with
+              | zero =>
+                have hxa0 : x.a ≠ 0 := by
+                  intro hx0
+                  apply h2
+                  exact Or.inl hx0
+                have hapos : 0 < x.a := by
+                  exact lt_of_le_of_ne x.pa (Ne.symm hxa0)
+                rw [h_1] at h3
+                norm_num at h3
+                have hs : Real.sin (-Real.pi / 2) = (-1 : ℝ) := by
+                  simp [Real.sin_pi_div_two]
+                rw [hs] at h3
+                nlinarith
+              | succ n =>
+                have pθ := x.pθ
+                rw [h_1] at pθ
+                norm_num at pθ
+                have hpi' : (3 : ℝ) * (Real.pi / 2) > Real.pi := by
+                  have hpi2 : 0 < Real.pi / 2 := by positivity
+                  nlinarith [Real.pi_pos]
+                have : ((2 * (↑n + 1) + 1) * Real.pi / 2 : ℝ) > Real.pi := by
+                  have h'' : ((2 : ℝ) * (n + (1 : ℝ)) + (1 : ℝ)) ≥ (3 : ℝ) := by nlinarith
+                  nlinarith
+                nlinarith [pθ.1, this]
 
-      · sorry
-      · sorry
-      · sorry
-      · sorry
+      · grind
+      ·
+        ext
+        · exact ha
+        ·
+          have hxa0 : x.a ≠ 0 := by
+            exact left
+          have hcos0 : Real.cos x.θ ≠ 0 := by
+            exact right
+          have hapos : 0 < x.a := by
+            exact lt_of_le_of_ne x.pa (Ne.symm hxa0)
+          have hcospos : 0 < Real.cos x.θ := by
+            by_contra hc
+            have hcle : Real.cos x.θ ≤ 0 := le_of_not_gt hc
+            have hmul : x.a * Real.cos x.θ ≤ 0 := mul_nonpos_of_nonneg_of_nonpos x.pa hcle
+            linarith
+          have hθlt : x.θ < Real.pi / 2 := by
+            by_contra hnot
+            have hge : Real.pi / 2 ≤ x.θ := le_of_not_gt hnot
+            have hle : x.θ ≤ Real.pi := le_of_lt x.pθ.2
+            have hnonpos : Real.cos x.θ ≤ 0 := Real.cos_nonpos_of_pi_div_two_le_of_le hge hle
+            linarith
+          have hθgt : -(Real.pi / 2) < x.θ := by
+            by_contra hnot
+            have hle : x.θ ≤ -(Real.pi / 2) := le_of_not_gt hnot
+            have hge' : Real.pi / 2 ≤ -x.θ := by nlinarith
+            have hle' : -x.θ ≤ Real.pi := by
+              have hp := x.pθ.1
+              nlinarith
+            have hnonpos : Real.cos (-x.θ) ≤ 0 := Real.cos_nonpos_of_pi_div_two_le_of_le hge' hle'
+            have hnonpos' : Real.cos x.θ ≤ 0 := by simpa [Real.cos_neg] using hnonpos
+            linarith
+          have hratio : x.a * Real.sin x.θ * (x.a * Real.cos x.θ)⁻¹ = Real.tan x.θ := by
+            rw [Real.tan_eq_sin_div_cos, div_eq_mul_inv]
+            field_simp [hxa0, hcos0]
+          rw [show Real.arctan (x.a * Real.sin x.θ * (x.a * Real.cos x.θ)⁻¹) = x.θ by
+            rw [hratio]
+            exact Real.arctan_tan hθgt hθlt]
+      · grind
+      · grind
 
   )
 
